@@ -63,21 +63,17 @@ def backward_prop(data, labels, params):
     b2 = params['b2']
 
     # YOUR CODE HERE
+    lamda = 0.0001
     (x, h, y) = data
     m = x.shape[0]
     gradb2 = np.sum(y - labels, axis = 0) / m
-    
-    gradW2 = np.dot(h.transpose(), y-labels) / m
-    
-    gradb1 = np.dot(h.transpose(), 1-h).dot(W2)
-    gradb1 = np.dot(y-labels, gradb1.transpose())
-    gradW1 = np.dot(x.transpose(), gradb1) / m
 
+    gradW2 = np.dot(h.transpose(), y-labels) / m + 2*lamda*W2
+    
+    gradb1 = np.dot(y-labels, W2.transpose()) * (h *(1-h))
+    gradW1 = np.dot(x.transpose(), gradb1) / m + 2*lamda*W1
     gradb1 = np.sum(gradb1, axis = 0) / m
-    print(gradW1[0])
-    print(gradb1)
-    print(gradW2[0])
-    print(gradb2)
+    
     # END YOUR CODE
 
     grad = {}
@@ -139,6 +135,7 @@ def nn_train(trainData, trainLabels, devData, devLabels):
             gradW2 = grad['W2']
             gradb1 = grad['b1']
             gradb2 = grad['b2']
+          
             W1 = W1 - learning_rate * gradW1
             b1 = b1 - learning_rate * gradb1
             W2 = W2 - learning_rate * gradW2
@@ -147,6 +144,7 @@ def nn_train(trainData, trainLabels, devData, devLabels):
             params['b1'] = b1
             params['W2'] = W2
             params['b2'] = b2
+
 
         loss_train.append(loss_epoch_train / m)
         accuracy_train.append(correct_epoch_train / m)
@@ -158,7 +156,7 @@ def nn_train(trainData, trainLabels, devData, devLabels):
         accuracy_val.append(accuracy_epoch_val)
         print("val loss: %f, val accuracy: %f" % (loss_val[epoch], accuracy_val[epoch]))
 
-    pickle.dump(params, open("params.p", "wb" ))
+    pickle.dump(params, open("params_reg.p", "wb" ))
 
     # draw
     epochs = range(1, num_epochs + 1)
@@ -171,9 +169,9 @@ def nn_train(trainData, trainLabels, devData, devLabels):
     plt.legend(handles=handles)
     plt.xlabel('number of epochs')
     plt.ylabel('loss')
-    plt.title('loss v.s. epochs')
+    plt.title('loss v.s. epochs (regularization)')
     # plt.show()
-    plt.savefig("p1_1.png")
+    plt.savefig("p1_3.png")
 
     plt.figure(112)
     handles = []
@@ -184,9 +182,9 @@ def nn_train(trainData, trainLabels, devData, devLabels):
     plt.legend(handles=handles)
     plt.xlabel('number of epochs')
     plt.ylabel('accuracy')
-    plt.title('accuracy v.s. epochs')
+    plt.title('accuracy v.s. epochs (regularization)')
     # plt.show()
-    plt.savefig('p1_2.png')
+    plt.savefig('p1_4.png')
 
     # END YOUR CODE
 
@@ -221,33 +219,33 @@ def one_hot_labels(labels):
 
 def main():
     np.random.seed(100)
-    # trainData, trainLabels = readData('images_train.csv', 'labels_train.csv')
+    trainData, trainLabels = readData('images_train.csv', 'labels_train.csv')
 
-    # # np.savetxt('images_debug.csv', trainData[:3000], delimiter=',')
-    # # np.savetxt('labels_debug.csv', trainLabels[:3000], delimiter=',')
-    # # return
-
-    # trainLabels = one_hot_labels(trainLabels)
-    # p = np.random.permutation(60000)
-    # trainData = trainData[p, :]
-    # trainLabels = trainLabels[p, :]
-
-    # devData = trainData[0:10000, :]
-    # devLabels = trainLabels[0:10000, :]
-    # trainData = trainData[10000:, :]
-    # trainLabels = trainLabels[10000:, :]
-
-    trainData, trainLabels = readData('images_debug.csv', 'labels_debug.csv')
+    # np.savetxt('images_debug.csv', trainData[:3000], delimiter=',')
+    # np.savetxt('labels_debug.csv', trainLabels[:3000], delimiter=',')
+    # return
 
     trainLabels = one_hot_labels(trainLabels)
-    p = np.random.permutation(3000)
+    p = np.random.permutation(60000)
     trainData = trainData[p, :]
     trainLabels = trainLabels[p, :]
 
-    devData = trainData[0:2000, :]
-    devLabels = trainLabels[0:2000, :]
-    trainData = trainData[2000:, :]
-    trainLabels = trainLabels[2000:, :]
+    devData = trainData[0:10000, :]
+    devLabels = trainLabels[0:10000, :]
+    trainData = trainData[10000:, :]
+    trainLabels = trainLabels[10000:, :]
+
+    # trainData, trainLabels = readData('images_debug.csv', 'labels_debug.csv')
+
+    # trainLabels = one_hot_labels(trainLabels)
+    # p = np.random.permutation(3000)
+    # trainData = trainData[p, :]
+    # trainLabels = trainLabels[p, :]
+
+    # devData = trainData[0:2000, :]
+    # devLabels = trainLabels[0:2000, :]
+    # trainData = trainData[2000:, :]
+    # trainLabels = trainLabels[2000:, :]
 
     mean = np.mean(trainData)
     std = np.std(trainData)
