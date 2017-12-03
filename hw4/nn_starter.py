@@ -1,6 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
-
+import pickle
 
 def readData(images_file, labels_file):
     x = np.loadtxt(images_file, delimiter=',')
@@ -14,7 +14,12 @@ def softmax(x):
     Use tricks from previous assignment to avoid overflow
     """
     # YOUR CODE HERE
-
+    (m, n) = x.shape
+    s = np.zeros(x.shape)
+    for i in range(m):
+        for j in range(n):
+            x_minum = np.exp(x[i] - x[i][j])
+            s[i][j] = 1. / x_minum.sum()
     # END YOUR CODE
     return s
 
@@ -24,7 +29,7 @@ def sigmoid(x):
     Compute the sigmoid function for the input here.
     """
     # YOUR CODE HERE
-
+    s = 1./ (1 + np.exp(-x))
     # END YOUR CODE
     return s
 
@@ -58,7 +63,21 @@ def backward_prop(data, labels, params):
     b2 = params['b2']
 
     # YOUR CODE HERE
+    (x, h, y) = data
+    m = x.shape[0]
+    gradb2 = np.sum(y - labels, axis = 0) / m
+    
+    gradW2 = np.dot(h.transpose(), y-labels) / m
+    
+    gradb1 = np.dot(h.transpose(), 1-h).dot(W2)
+    gradb1 = np.dot(y-labels, gradb1.transpose())
+    gradW1 = np.dot(x.transpose(), gradb1) / m
 
+    gradb1 = np.sum(gradb1, axis = 0) / m
+    print(gradW1[0])
+    print(gradb1)
+    print(gradW2[0])
+    print(gradb2)
     # END YOUR CODE
 
     grad = {}
@@ -80,8 +99,8 @@ def nn_train(trainData, trainLabels, devData, devLabels):
     # YOUR CODE HERE
 
     # initialize params
-    W1 = random.standard_normal((n, num_hidden))
-    W2 = random.standard_normal((num_hidden, num_output))
+    W1 = np.random.standard_normal((n, num_hidden))
+    W2 = np.random.standard_normal((num_hidden, num_output))
     b1 = np.zeros(num_hidden)
     b2 = np.zeros(num_output)
     params['W1'] = W1
@@ -95,20 +114,21 @@ def nn_train(trainData, trainLabels, devData, devLabels):
     accuracy_val = []
     num_epochs = 30
     batch_size = 1000
-    num_iters = m / batch_size
+    num_iters = int(m / batch_size)
     for epoch in range(num_epochs):
         loss_epoch_train = 0
-        correct = 0
-        total = 0
+        correct_epoch_train = 0
         for iter in range(num_iters):
             input = trainData[iter * batch_size: (iter + 1) * batch_size]
             labels = trainLabels[iter * batch_size: (iter + 1) * batch_size]
+
             h, output, loss = forward_prop(input, labels, params)
-            grad = backward_prop()
+            
+            grad = backward_prop((input, h, output), labels, params)
+            
             loss_epoch_train += loss * batch_size
-            correct += (np.argmax(output, axis=1) == np.argmax(
+            correct_epoch_train += (np.argmax(output, axis=1) == np.argmax(
                 labels, axis=1)).sum()
-            total += batch_size
 
             # update params
             W1 = params['W1']
@@ -128,17 +148,21 @@ def nn_train(trainData, trainLabels, devData, devLabels):
             params['W2'] = W2
             params['b2'] = b2
 
-        loss_train.append(loss_epoch_train / total)
-        accuracy_train.append(correct / total)
+        loss_train.append(loss_epoch_train / m)
+        accuracy_train.append(correct_epoch_train / m)
+        print("Epoch %d: training loss: %f, training accuracy: %f" % (epoch+1, loss_train[epoch], accuracy_train[epoch]))
 
         # test on validation set
-        loss_epoch_val, accuracy_val = nn_test(devData, devLabels, params)
+        loss_epoch_val, accuracy_epoch_val = nn_test(devData, devLabels, params)
         loss_val.append(loss_epoch_val)
-        accuracy_val.append(accuracy_val)
+        accuracy_val.append(accuracy_epoch_val)
+        print("val loss: %f, val accuracy: %f" % (loss_val[epoch], accuracy_val[epoch]))
+
+    pickle.dump(params, open("params.p", "wb" ))
 
     # draw
     epochs = range(1, num_epochs + 1)
-    plt.figure(1)
+    plt.figure(111)
     handles = []
     curve1, = plt.plot(epochs, loss_train, label='training loss')
     curve2, = plt.plot(epochs, loss_val, label='validation loss')
@@ -147,9 +171,11 @@ def nn_train(trainData, trainLabels, devData, devLabels):
     plt.legend(handles=handles)
     plt.xlabel('number of epochs')
     plt.ylabel('loss')
-    plt.savefig('p1_1.jpg')
+    plt.title('loss v.s. epochs')
+    # plt.show()
+    plt.savefig("p1_1.png")
 
-    plt.figure(2)
+    plt.figure(112)
     handles = []
     curve1, = plt.plot(epochs, accuracy_train, label='training accuracy')
     curve2, = plt.plot(epochs, accuracy_val, label='validation accuracy')
@@ -158,7 +184,9 @@ def nn_train(trainData, trainLabels, devData, devLabels):
     plt.legend(handles=handles)
     plt.xlabel('number of epochs')
     plt.ylabel('accuracy')
-    plt.savefig('p1_2.jpg')
+    plt.title('accuracy v.s. epochs')
+    # plt.show()
+    plt.savefig('p1_2.png')
 
     # END YOUR CODE
 
@@ -182,7 +210,7 @@ def compute_cost(output, labels):
     cost = 0
     for i in range(output.shape[0]):
         cost += -y_log[i].dot(labels[i]).sum()
-    return 1. * cost / output.shapep[0]
+    return 1. * cost / output.shape[0]
 
 
 def one_hot_labels(labels):
@@ -193,16 +221,33 @@ def one_hot_labels(labels):
 
 def main():
     np.random.seed(100)
-    trainData, trainLabels = readData('images_train.csv', 'labels_train.csv')
+    # trainData, trainLabels = readData('images_train.csv', 'labels_train.csv')
+
+    # # np.savetxt('images_debug.csv', trainData[:3000], delimiter=',')
+    # # np.savetxt('labels_debug.csv', trainLabels[:3000], delimiter=',')
+    # # return
+
+    # trainLabels = one_hot_labels(trainLabels)
+    # p = np.random.permutation(60000)
+    # trainData = trainData[p, :]
+    # trainLabels = trainLabels[p, :]
+
+    # devData = trainData[0:10000, :]
+    # devLabels = trainLabels[0:10000, :]
+    # trainData = trainData[10000:, :]
+    # trainLabels = trainLabels[10000:, :]
+
+    trainData, trainLabels = readData('images_debug.csv', 'labels_debug.csv')
+
     trainLabels = one_hot_labels(trainLabels)
-    p = np.random.permutation(60000)
+    p = np.random.permutation(3000)
     trainData = trainData[p, :]
     trainLabels = trainLabels[p, :]
 
-    devData = trainData[0:10000, :]
-    devLabels = trainLabels[0:10000, :]
-    trainData = trainData[10000:, :]
-    trainLabels = trainLabels[10000:, :]
+    devData = trainData[0:2000, :]
+    devLabels = trainLabels[0:2000, :]
+    trainData = trainData[2000:, :]
+    trainLabels = trainLabels[2000:, :]
 
     mean = np.mean(trainData)
     std = np.std(trainData)
@@ -215,10 +260,10 @@ def main():
 
     params = nn_train(trainData, trainLabels, devData, devLabels)
 
-    readyForTesting = False
-    if readyForTesting:
-        accuracy = nn_test(testData, testLabels, params)
-        print 'Test accuracy: %f' % accuracy
+    # readyForTesting = False
+    # if readyForTesting:
+    #     accuracy = nn_test(testData, testLabels, params)
+    #     print('Test accuracy: %f' % accuracy)
 
 if __name__ == '__main__':
     main()
