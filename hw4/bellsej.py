@@ -37,14 +37,15 @@ def unmixer(X):
               0.005, 0.005, 0.002, 0.002, 0.001, 0.001]
     print('Separating tracks ...')
     ######## Your code here ##########
-    for lr_rate in anneal:
-        for i in range(N):
-            x_i = X[:, i]
-            s = W.dot(x_i)
+    for iteration in range(len(anneal)):
+        lr_rate = anneal[iteration]
+        for i in range(M):
+            s = W.dot(X[i])
             g = 1. / (1 + np.exp(-s))
-            dW1 = np.dot(1 - 2 * g, x_i.transpose())
+            dW1 = np.outer(1 - 2 * g, X[i].transpose())
             dW2 = np.linalg.inv(W.transpose())
             W += lr_rate * (dW1 + dW2)
+        print("Iteration: %d" % (iteration+1))
 
     ###################################
     return W
@@ -54,7 +55,7 @@ def unmix(X, W):
     S = np.zeros(X.shape)
 
     ######### Your code here ##########
-    S = W.dot(X)
+    S = X.dot(W.transpose())
     ##################################
     return S
 
@@ -62,9 +63,9 @@ def unmix(X, W):
 def main():
     X = normalize(load_data())
 
-    for i in range(X.shape[1]):
-        print('Playing mixed track %d' % i)
-        play(X[:, i])
+    # for i in range(X.shape[1]):
+    #     print('Playing mixed track %d' % i)
+    #     play(X[:, i])
 
     W = unmixer(X)
     S = normalize(unmix(X, W))
